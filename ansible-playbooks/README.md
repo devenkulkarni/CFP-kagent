@@ -1,6 +1,6 @@
 # Kagent Ansible Playbooks
 
-This directory contains Ansible playbooks for deploying a complete kagent environment on a K3s cluster. The setup includes K3s, kubectl, Helm, and kagent with Ollama for local AI processing.
+This directory contains Ansible playbooks for deploying a complete kagent environment on a K3s cluster running on SUSE Linux Enterprise 16 (SLE16). The setup includes K3s, kubectl, Helm, and kagent with external LLM providers (OpenAI/Anthropic).
 
 ## 🏗️ Architecture
 
@@ -12,7 +12,6 @@ This directory contains Ansible playbooks for deploying a complete kagent enviro
 │ • kubectl       │    │ • Common tools  │    │ • Common tools  │
 │ • Helm          │    │                 │    │                 │
 │ • Kagent        │    │                 │    │                 │
-│ • Ollama        │    │                 │    │                 │
 │ • Dashboard     │    │                 │    │                 │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
 ```
@@ -95,12 +94,22 @@ ansible-playbook playbook.yml --tags "kubectl,helm"
 ### 6. Deploy Kagent Later (Optional)
 
 ```bash
-# First, enable kagent in group_vars/all.yml
+# First, configure API keys in group_vars/all.yml
 # Set: kagent_enabled: true
-# Set: ollama_enabled: true (if you want Ollama)
+# Set: openai_api_key: "your-openai-api-key"
+# Set: anthropic_api_key: "your-anthropic-api-key"
 
 # Then deploy kagent
 ansible-playbook playbook.yml --tags "kagent"
+```
+
+### 7. Quick Demo Deployment (Single-Node)
+
+```bash
+# Use the demo script for easy single-node deployment
+./demo-deploy.sh --infrastructure  # Deploy K3s + demo app
+./demo-deploy.sh --kagent         # Add kagent (requires API keys)
+./demo-deploy.sh --full           # Deploy everything at once
 ```
 
 ## 🔧 Configuration
@@ -112,7 +121,8 @@ Create a `.env` file for sensitive data:
 ```bash
 # .env file
 K3S_TOKEN=your-secure-token-here
-OPENAI_API_KEY=your-openai-key-here
+OPENAI_API_KEY=your-openai-api-key-here
+ANTHROPIC_API_KEY=your-anthropic-api-key-here
 SSH_PRIVATE_KEY=~/.ssh/id_rsa
 ```
 
@@ -123,8 +133,8 @@ SSH_PRIVATE_KEY=~/.ssh/id_rsa
 | `k3s_version` | `v1.28.5+k3s1` | K3s version to install |
 | `k3s_token` | `kagent-token-12345` | Cluster token |
 | `kagent_enabled` | `false` | Enable kagent deployment |
-| `ollama_enabled` | `false` | Enable Ollama deployment |
-| `ollama_model` | `llama3.1:8b` | Ollama model to use |
+| `openai_api_key` | `your-openai-api-key-here` | OpenAI API key for LLM |
+| `anthropic_api_key` | `your-anthropic-api-key-here` | Anthropic API key for LLM |
 | `kagent_namespace` | `kagent` | Kubernetes namespace |
 
 ## 📊 Accessing Services
@@ -158,22 +168,37 @@ kubectl get pods -n kagent
 ```
 ansible-playbooks/
 ├── ansible.cfg              # Ansible configuration
-├── playbook.yml             # Main playbook
+├── playbook.yml             # Main playbook (multi-node)
+├── demo-setup.yml           # Single-node demo setup
+├── kagent-demo.yml          # Kagent demo deployment
+├── infrastructure-only.yml  # Infrastructure only
+├── demo-deploy.sh           # Demo deployment script
 ├── requirements.yml         # Dependencies
 ├── inventory/
-│   └── hosts.yml           # Server inventory
+│   ├── hosts.yml           # Multi-node inventory
+│   └── single-node.yml     # Single-node inventory
 ├── group_vars/
 │   └── all.yml             # Global variables
 └── roles/
-    ├── common/             # Common system setup
+    ├── common/             # Common system setup (SLE16)
     ├── k3s/               # K3s installation
     ├── kubectl-helm/      # kubectl and Helm setup
-    └── kagent/            # Kagent deployment
+    └── kagent/            # Kagent deployment (external LLM)
 ```
 
 ## 🎯 Use Cases
 
-### 1. Infrastructure Management
+### 1. Single-Node Demo Setup
+
+```bash
+# Deploy basic K3s cluster for demos
+ansible-playbook -i inventory/single-node.yml demo-setup.yml
+
+# Add kagent with external LLM
+ansible-playbook -i inventory/single-node.yml kagent-demo.yml
+```
+
+### 2. Infrastructure Management
 
 ```bash
 # Access kagent dashboard and ask:
@@ -182,7 +207,7 @@ ansible-playbooks/
 "Show me all pods with high memory usage"
 ```
 
-### 2. Alert Management
+### 3. Alert Management
 
 ```bash
 # Kagent will automatically:
@@ -211,7 +236,7 @@ ansible-playbooks/
    ansible k3s_cluster -m setup -a "filter=ansible_memtotal_mb"
    
    # Verify firewall settings
-   ansible k3s_cluster -m ufw -a "state=enabled"
+   ansible k3s_cluster -m firewalld -a "state=enabled"
    ```
 
 3. **Kagent Not Starting**
@@ -219,7 +244,10 @@ ansible-playbooks/
    # Check pod logs
    kubectl logs -n kagent deployment/kagent
    
-   # Verify Ollama is running
+   # Verify API keys are set
+   kubectl get secret -n kagent kagent-secrets
+   
+   # Check kagent pods
    kubectl get pods -n kagent
    ```
 
@@ -232,8 +260,8 @@ sudo journalctl -u k3s -f
 # Check kagent logs
 kubectl logs -n kagent deployment/kagent -f
 
-# Check Ollama logs
-kubectl logs -n kagent deployment/ollama -f
+# Check kagent configuration
+kubectl get configmap -n kagent kagent-config -o yaml
 ```
 
 ## 🔄 Maintenance
@@ -248,17 +276,12 @@ kagent_version: "latest"
 ansible-playbook playbook.yml --tags "kagent"
 ```
 
-### Scaling Ollama
+### Updating API Keys
 
 ```bash
 # Edit group_vars/all.yml
-ollama_resources:
-  requests:
-    memory: "8Gi"
-    cpu: "4"
-  limits:
-    memory: "16Gi"
-    cpu: "8"
+openai_api_key: "new-openai-api-key"
+anthropic_api_key: "new-anthropic-api-key"
 
 # Apply changes
 ansible-playbook playbook.yml --tags "kagent"
@@ -268,7 +291,7 @@ ansible-playbook playbook.yml --tags "kagent"
 
 - [Kagent Documentation](https://kagent.dev)
 - [K3s Documentation](https://k3s.io)
-- [Ollama Documentation](https://ollama.ai)
+- [SUSE Linux Enterprise Documentation](https://documentation.suse.com/sle/16/)
 - [Ansible Documentation](https://docs.ansible.com)
 
 ## 🤝 Contributing
