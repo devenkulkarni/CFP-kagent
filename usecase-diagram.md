@@ -7,8 +7,7 @@ graph TB
     %% User Interface Layer
     subgraph "User Interface"
         User[👤 DevOps Engineer]
-        ChatOps[💬 ChatOps Interface<br/>Slack/Discord/Teams]
-        Dashboard[📊 Kagent Dashboard]
+        Dashboard[📊 Kagent Dashboard<br/>Built-in Chat Interface]
     end
 
     %% AI Layer
@@ -56,9 +55,7 @@ graph TB
     end
 
     %% User Interactions
-    User --> ChatOps
     User --> Dashboard
-    ChatOps --> Kagent
     Dashboard --> Kagent
 
     %% AI Processing
@@ -94,7 +91,7 @@ graph TB
     Kagent --> UC2_Flow
 
     %% Use Case 1 Details
-    UC1_Flow --> |"1. User requests infrastructure changes"| ChatOps
+    UC1_Flow --> |"1. User requests infrastructure changes"| Dashboard
     UC1_Flow --> |"2. AI analyzes requirements"| Kagent
     UC1_Flow --> |"3. AI creates GitOps PR"| MCP_Git
     UC1_Flow --> |"4. Human reviews and approves"| PR
@@ -104,7 +101,7 @@ graph TB
     UC2_Flow --> |"1. Prometheus detects issue"| Alerts
     UC2_Flow --> |"2. AI analyzes alert"| Kagent
     UC2_Flow --> |"3. AI executes runbook"| MCP_K8s
-    UC2_Flow --> |"4. AI reports resolution"| ChatOps
+    UC2_Flow --> |"4. AI reports resolution"| Dashboard
     UC2_Flow --> |"5. AI documents in Git"| MCP_Git
 
     %% Styling
@@ -116,7 +113,7 @@ graph TB
     classDef gitops fill:#f1f8e9
     classDef usecase fill:#fff8e1
 
-    class User,ChatOps,Dashboard userInterface
+    class User,Dashboard userInterface
     class Kagent,Ollama aiLayer
     class MCP_K8s,MCP_Git,MCP_Prometheus mcpLayer
     class RKE2,Harvester,Apps infrastructure

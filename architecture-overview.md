@@ -6,7 +6,7 @@
 graph TB
     %% User Layer
     User[👤 DevOps Engineer]
-    ChatOps[💬 ChatOps<br/>Slack/Discord]
+    Dashboard[📊 Kagent Dashboard<br/>Built-in Chat Interface]
     
     %% AI Layer
     Kagent[🤖 Kagent AI Agent]
@@ -29,8 +29,8 @@ graph TB
     PR[📋 Pull Requests<br/>Human Review]
     
     %% Connections
-    User --> ChatOps
-    ChatOps --> Kagent
+    User --> Dashboard
+    Dashboard --> Kagent
     Kagent --> Ollama
     Kagent --> MCP
     MCP --> RKE2
@@ -55,7 +55,7 @@ graph TB
     classDef monitorLayer fill:#fce4ec
     classDef gitopsLayer fill:#f1f8e9
     
-    class User,ChatOps userLayer
+    class User,Dashboard userLayer
     class Kagent,Ollama aiLayer
     class MCP mcpLayer
     class RKE2,Harvester infraLayer
@@ -68,22 +68,22 @@ graph TB
 ```mermaid
 sequenceDiagram
     participant U as 👤 User
-    participant C as 💬 ChatOps
+    participant D as 📊 Dashboard
     participant K as 🤖 Kagent
     participant M as 🔧 MCP Server
     participant G as 📚 Git
     participant A as 🔄 ArgoCD
     participant I as ☸️ Infrastructure
     
-    U->>C: "Scale my app to 5 replicas"
-    C->>K: Forward request
+    U->>D: "Scale my app to 5 replicas"
+    D->>K: Forward request
     K->>M: Analyze requirements
     M->>G: Create PR with changes
     G->>U: Review PR notification
     U->>G: Approve PR
     G->>A: Trigger deployment
     A->>I: Apply changes
-    I->>C: Confirm scaling complete
+    I->>D: Confirm scaling complete
 ```
 
 ## Use Case 2: Alert Management
@@ -95,7 +95,7 @@ sequenceDiagram
     participant K as 🤖 Kagent
     participant M as 🔧 MCP Server
     participant I as ☸️ Infrastructure
-    participant C as 💬 ChatOps
+    participant D as 📊 Dashboard
     participant G as 📚 Git
     
     P->>A: High CPU alert
@@ -103,7 +103,7 @@ sequenceDiagram
     K->>M: Analyze metrics
     M->>I: Scale up resources
     I->>P: Updated metrics
-    K->>C: Report resolution
+    K->>D: Report resolution
     K->>G: Document incident
 ```
 
@@ -111,7 +111,7 @@ sequenceDiagram
 
 - ✅ **AI-Powered Automation** with local LLM
 - ✅ **GitOps Workflow** with human oversight  
-- ✅ **ChatOps Interface** for natural language
+- ✅ **Built-in Chat Interface** for natural language
 - ✅ **Full Observability** with Prometheus
 - ✅ **Secure & Private** - all data stays local
 - ✅ **Human Accountability** through PR reviews
@@ -125,4 +125,4 @@ sequenceDiagram
 | Infrastructure | RKE2 + Harvester | SUSE cloud-native platforms |
 | GitOps | ArgoCD + Git | Infrastructure as Code |
 | Monitoring | Prometheus + Grafana | Observability and alerting |
-| Interface | ChatOps (Slack/Discord) | Human interaction |
+| Interface | Kagent Dashboard | Built-in chat interface |
