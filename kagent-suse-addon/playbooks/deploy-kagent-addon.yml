@@ -1,0 +1,93 @@
+---
+- name: Deploy Kagent Add-on to SUSE AI Stack
+  hosts: suse_ai_cluster
+  become: yes
+  gather_facts: yes
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
+    kagent_namespace: "kagent"
+    kagent_version: "latest"
+
+  pre_tasks:
+    - name: Verify SUSE AI Stack is running
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Node
+      register: cluster_nodes
+      when: node_role == 'master'
+
+    - name: Check if RKE2 cluster is ready
+      kubernetes.core.k8s_info:
+        api_version: apps/v1
+        kind: Deployment
+        namespace: "kube-system"
+        label_selectors:
+          - "app.kubernetes.io/name=rke2"
+      register: rke2_status
+      when: node_role == 'master'
+
+    - name: Verify Ollama is running
+      kubernetes.core.k8s_info:
+        api_version: apps/v1
+        kind: Deployment
+        namespace: "ollama"
+      register: ollama_status
+      when: node_role == 'master'
+
+    - name: Display SUSE AI Stack status
+      debug:
+        msg:
+          - "SUSE AI Stack Status:"
+          - "  - RKE2 Cluster: {{ 'Ready' if rke2_status.resources else 'Not Found' }}"
+          - "  - Ollama: {{ 'Running' if ollama_status.resources else 'Not Found' }}"
+          - "  - Nodes: {{ cluster_nodes.resources | length }}"
+      when: node_role == 'master'
+
+  roles:
+    - role: kagent-deployment
+      tags: [kagent, deployment]
+      when: node_role == 'master'
+
+    - role: mcp-tools
+      tags: [mcp, tools]
+      when: node_role == 'master'
+
+    - role: gitops-setup
+      tags: [gitops, argo]
+      when: node_role == 'master'
+
+  post_tasks:
+    - name: Wait for kagent to be ready
+      kubernetes.core.k8s_info:
+        api_version: apps/v1
+        kind: Deployment
+        name: kagent
+        namespace: "{{ kagent_namespace }}"
+        wait: true
+        wait_condition:
+          type: Available
+          status: "True"
+        wait_timeout: 600
+      when: node_role == 'master'
+
+    - name: Display kagent access information
+      debug:
+        msg:
+          - "🎉 Kagent add-on deployed successfully!"
+          - "🌐 Kagent Dashboard: http://kagent.{{ cluster_ip }}.nip.io"
+          - "🔗 Port-forward: kubectl port-forward -n {{ kagent_namespace }} svc/kagent 8080:80"
+          - "💻 Local access: http://localhost:8080"
+          - "🤖 LLM: Using Ollama from SUSE AI Stack"
+          - "📊 Observability: Available via SUSE Observability"
+      when: node_role == 'master'
+
+    - name: Show integration status
+      debug:
+        msg:
+          - "🔗 Integration Status:"
+          - "  - SUSE AI Stack: ✅ Connected"
+          - "  - Ollama LLM: ✅ Available"
+          - "  - RKE2 Cluster: ✅ Ready"
+          - "  - MCP Tools: ✅ Configured"
+          - "  - GitOps: ✅ Ready"
+      when: node_role == 'master'

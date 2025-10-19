@@ -1,0 +1,3 @@
+[submodule "suse-ai-stack"]
+	path = suse-ai-stack
+	url = https://github.com/SUSE/suse-ai-stack.git

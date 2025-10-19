@@ -1,0 +1,25 @@
+---
+# Kagent deployment defaults
+kagent_namespace: "kagent"
+kagent_version: "latest"
+
+# Resource requirements
+kagent_resources:
+  requests:
+    memory: "1Gi"
+    cpu: "0.5"
+  limits:
+    memory: "2Gi"
+    cpu: "1"
+
+# LLM Provider Configuration
+openai_api_key: "your-openai-api-key-here"
+anthropic_api_key: "your-anthropic-api-key-here"
+ollama_model: "llama3.1:8b"
+
+# Git Configuration
+git_repo_url: "https://github.com/Spectro34/CFP-kagent.git"
+git_branch: "main"
+
+# Cluster Configuration
+cluster_ip: "{{ ansible_default_ipv4.address }}"

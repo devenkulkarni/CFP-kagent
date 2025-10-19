@@ -1,0 +1,41 @@
+---
+# Kagent SUSE AI Stack Add-on Configuration
+# Copy this file to kagent-config.yml and update with your values
+
+# Cluster Configuration
+cluster_ip: "192.168.1.100"  # Your SUSE AI Stack cluster IP
+cluster_name: "suse-ai-cluster"
+
+# Kagent Configuration
+kagent_namespace: "kagent"
+kagent_version: "latest"
+
+# LLM Provider Configuration
+# Choose one or more providers
+openai_api_key: "sk-your-openai-api-key-here"
+anthropic_api_key: "sk-ant-your-anthropic-api-key-here"
+ollama_model: "llama3.1:8b"  # Model to use with Ollama from SUSE AI Stack
+
+# GitOps Configuration
+git_repo_url: "https://github.com/Spectro34/CFP-kagent.git"
+git_branch: "main"
+git_username: "your-git-username"
+git_token: "your-git-token"
+
+# Resource Configuration
+kagent_resources:
+  requests:
+    memory: "1Gi"
+    cpu: "0.5"
+  limits:
+    memory: "2Gi"
+    cpu: "1"
+
+# MCP Tools Configuration
+prometheus_url: "http://prometheus-server.monitoring.svc.cluster.local"
+grafana_url: "http://grafana.monitoring.svc.cluster.local"
+
+# Demo Configuration
+demo_enabled: true
+demo_app_namespace: "demo"
+demo_app_replicas: 2

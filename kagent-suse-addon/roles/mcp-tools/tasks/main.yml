@@ -1,0 +1,116 @@
+---
+- name: Create MCP tools configmap
+  kubernetes.core.k8s:
+    name: mcp-tools-config
+    namespace: "{{ kagent_namespace }}"
+    api_version: v1
+    kind: ConfigMap
+    state: present
+    definition:
+      data:
+        kubernetes-tools.yaml: |
+          name: "kubernetes"
+          type: "kubernetes"
+          config:
+            kubeconfig: "/etc/kube/config"
+            namespace: "{{ kagent_namespace }}"
+        prometheus-tools.yaml: |
+          name: "prometheus"
+          type: "prometheus"
+          config:
+            url: "{{ prometheus_url }}"
+            timeout: 30
+        git-tools.yaml: |
+          name: "git"
+          type: "git"
+          config:
+            repo: "{{ git_repo_url }}"
+            branch: "{{ git_branch }}"
+            username: "{{ git_username }}"
+            token: "{{ git_token }}"
+  when: node_role == 'master'
+
+- name: Create MCP tools secrets
+  kubernetes.core.k8s:
+    name: mcp-tools-secrets
+    namespace: "{{ kagent_namespace }}"
+    api_version: v1
+    kind: Secret
+    state: present
+    definition:
+      type: Opaque
+      data:
+        git-token: "{{ git_token | b64encode }}"
+        prometheus-token: "{{ prometheus_token | default('') | b64encode }}"
+  when: node_role == 'master'
+
+- name: Create MCP tools deployment
+  kubernetes.core.k8s:
+    name: mcp-tools
+    namespace: "{{ kagent_namespace }}"
+    api_version: apps/v1
+    kind: Deployment
+    state: present
+    definition:
+      spec:
+        replicas: 1
+        selector:
+          matchLabels:
+            app: mcp-tools
+        template:
+          metadata:
+            labels:
+              app: mcp-tools
+          spec:
+            serviceAccountName: kagent
+            containers:
+              - name: mcp-tools
+                image: "kagent/mcp-tools:latest"
+                ports:
+                  - containerPort: 8081
+                    name: http
+                env:
+                  - name: MCP_CONFIG_PATH
+                    value: "/etc/mcp-tools"
+                  - name: KUBECONFIG
+                    value: "/etc/kube/config"
+                resources:
+                  requests:
+                    memory: "256Mi"
+                    cpu: "100m"
+                  limits:
+                    memory: "512Mi"
+                    cpu: "200m"
+                volumeMounts:
+                  - name: config
+                    mountPath: /etc/mcp-tools
+                    readOnly: true
+                  - name: kubeconfig
+                    mountPath: /etc/kube
+                    readOnly: true
+            volumes:
+              - name: config
+                configMap:
+                  name: mcp-tools-config
+              - name: kubeconfig
+                secret:
+                  secretName: kagent-secrets
+  when: node_role == 'master'
+
+- name: Create MCP tools service
+  kubernetes.core.k8s:
+    name: mcp-tools
+    namespace: "{{ kagent_namespace }}"
+    api_version: v1
+    kind: Service
+    state: present
+    definition:
+      spec:
+        selector:
+          app: mcp-tools
+        ports:
+          - port: 80
+            targetPort: 8081
+            name: http
+        type: ClusterIP
+  when: node_role == 'master'
