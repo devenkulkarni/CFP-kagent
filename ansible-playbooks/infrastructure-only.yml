@@ -1,10 +1,12 @@
 ---
-- name: Deploy K3s Cluster with Kagent
+- name: Deploy K3s Infrastructure Only (No Kagent)
   hosts: k3s_cluster
   become: yes
   gather_facts: yes
   vars:
     ansible_python_interpreter: /usr/bin/python3
+    kagent_enabled: false
+    ollama_enabled: false
 
   pre_tasks:
     - name: Update package cache
@@ -43,19 +45,15 @@
       tags: [kubectl, helm, tools]
       when: node_role == 'master'
 
-    - role: kagent
-      tags: [kagent, ai, dashboard]
-      when: node_role == 'master' and kagent_enabled
-
   post_tasks:
     - name: Display cluster information
       debug:
         msg:
-          - "K3s cluster deployment completed!"
+          - "K3s infrastructure deployment completed!"
           - "Master node: {{ k3s_master_ip }}"
           - "Cluster token: {{ k3s_token }}"
-          - "Kagent namespace: {{ kagent_namespace }}"
-          - "Kagent dashboard: http://kagent.{{ k3s_master_ip }}.nip.io"
+          - "Kubectl and Helm are ready"
+          - "No kagent or Ollama installed"
       when: node_role == 'master'
 
     - name: Save kubeconfig
@@ -70,7 +68,7 @@
         msg:
           - "Next steps:"
           - "1. Copy kubeconfig to your local machine: scp {{ ansible_user }}@{{ k3s_master_ip }}:./kubeconfig ~/.kube/config"
-          - "2. Access kagent dashboard: http://kagent.{{ k3s_master_ip }}.nip.io"
-          - "3. Or use port-forward: kubectl port-forward -n {{ kagent_namespace }} svc/kagent 8080:80"
-          - "4. Check cluster status: kubectl get nodes"
+          - "2. Check cluster status: kubectl get nodes"
+          - "3. To install kagent later, set kagent_enabled: true in group_vars/all.yml"
+          - "4. Then run: ansible-playbook playbook.yml --tags kagent"
       when: node_role == 'master'

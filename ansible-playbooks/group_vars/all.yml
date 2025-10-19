@@ -44,7 +44,8 @@ kubectl_install_path: "/usr/local/bin"
 # Kagent Configuration
 kagent_namespace: "kagent"
 kagent_version: "latest"
-ollama_enabled: true
+kagent_enabled: false
+ollama_enabled: false
 ollama_model: "llama3.1:8b"
 ollama_gpu_enabled: false
 

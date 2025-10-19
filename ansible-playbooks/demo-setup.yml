@@ -1,0 +1,160 @@
+---
+- name: Deploy Single-Node K3s Demo Environment
+  hosts: k3s_cluster
+  become: yes
+  gather_facts: yes
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
+    # Demo-specific settings
+    kagent_enabled: false
+    ollama_enabled: false
+    prometheus_enabled: false
+    grafana_enabled: false
+    argocd_enabled: false
+
+  pre_tasks:
+    - name: Update package cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+      when: ansible_os_family == "Debian"
+
+    - name: Install Python3 and pip
+      apt:
+        name:
+          - python3
+          - python3-pip
+          - python3-apt
+        state: present
+      when: ansible_os_family == "Debian"
+
+    - name: Install required Python packages
+      pip:
+        name:
+          - kubernetes
+          - openshift
+          - pyyaml
+          - jinja2
+        state: present
+
+  roles:
+    - role: common
+      tags: [common, setup]
+
+    - role: k3s
+      tags: [k3s, kubernetes]
+      when: node_role is defined
+
+    - role: kubectl-helm
+      tags: [kubectl, helm, tools]
+      when: node_role == 'master'
+
+  post_tasks:
+    - name: Create demo namespace
+      kubernetes.core.k8s:
+        name: demo
+        api_version: v1
+        kind: Namespace
+        state: present
+      when: node_role == 'master'
+
+    - name: Deploy demo nginx application
+      kubernetes.core.k8s:
+        name: demo-nginx
+        namespace: demo
+        api_version: apps/v1
+        kind: Deployment
+        state: present
+        definition:
+          spec:
+            replicas: 2
+            selector:
+              matchLabels:
+                app: demo-nginx
+            template:
+              metadata:
+                labels:
+                  app: demo-nginx
+              spec:
+                containers:
+                  - name: nginx
+                    image: nginx:alpine
+                    ports:
+                      - containerPort: 80
+                    resources:
+                      requests:
+                        memory: "64Mi"
+                        cpu: "50m"
+                      limits:
+                        memory: "128Mi"
+                        cpu: "100m"
+      when: node_role == 'master'
+
+    - name: Create demo service
+      kubernetes.core.k8s:
+        name: demo-nginx-service
+        namespace: demo
+        api_version: v1
+        kind: Service
+        state: present
+        definition:
+          spec:
+            selector:
+              app: demo-nginx
+            ports:
+              - port: 80
+                targetPort: 80
+                name: http
+            type: ClusterIP
+      when: node_role == 'master'
+
+    - name: Create demo ingress
+      kubernetes.core.k8s:
+        name: demo-nginx-ingress
+        namespace: demo
+        api_version: networking.k8s.io/v1
+        kind: Ingress
+        state: present
+        definition:
+          spec:
+            rules:
+              - host: "demo.{{ k3s_demo_ip }}.nip.io"
+                http:
+                  paths:
+                    - path: /
+                      pathType: Prefix
+                      backend:
+                        service:
+                          name: demo-nginx-service
+                          port:
+                            number: 80
+      when: node_role == 'master'
+
+    - name: Display demo cluster information
+      debug:
+        msg:
+          - "🎉 Single-node K3s demo cluster deployed!"
+          - "📍 Master node: {{ k3s_demo_ip }}"
+          - "🔑 Cluster token: {{ k3s_token }}"
+          - "📦 Demo app: http://demo.{{ k3s_demo_ip }}.nip.io"
+          - "🛠️  kubectl and Helm are ready"
+          - "❌ No kagent or Ollama (disabled for demo)"
+      when: node_role == 'master'
+
+    - name: Save kubeconfig
+      copy:
+        content: "{{ lookup('file', '/home/' + ansible_user + '/.kube/config') }}"
+        dest: "./kubeconfig-demo"
+        mode: '0600'
+      when: node_role == 'master'
+
+    - name: Display next steps
+      debug:
+        msg:
+          - "📋 Next steps:"
+          - "1. Copy kubeconfig: scp {{ ansible_user }}@{{ k3s_demo_ip }}:./kubeconfig-demo ~/.kube/config"
+          - "2. Check cluster: kubectl get nodes"
+          - "3. Check demo app: kubectl get pods -n demo"
+          - "4. Access demo: http://demo.{{ k3s_demo_ip }}.nip.io"
+          - "5. To add kagent later: ansible-playbook kagent-demo.yml"
+      when: node_role == 'master'

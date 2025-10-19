@@ -5,7 +5,7 @@
     api_version: v1
     kind: Namespace
     state: present
-  when: node_role == 'master'
+  when: node_role == 'master' and kagent_enabled
 
 - name: Create kagent service account
   kubernetes.core.k8s:
@@ -14,7 +14,7 @@
     api_version: v1
     kind: ServiceAccount
     state: present
-  when: node_role == 'master'
+  when: node_role == 'master' and kagent_enabled
 
 - name: Create kagent cluster role
   kubernetes.core.k8s:
@@ -39,7 +39,7 @@
         - apiGroups: ["networking.k8s.io"]
           resources: ["ingresses"]
           verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
-  when: node_role == 'master'
+  when: node_role == 'master' and kagent_enabled
 
 - name: Create kagent cluster role binding
   kubernetes.core.k8s:
@@ -56,7 +56,7 @@
         kind: ClusterRole
         name: kagent
         apiGroup: rbac.authorization.k8s.io
-  when: node_role == 'master'
+  when: node_role == 'master' and kagent_enabled
 
 - name: Install Ollama if enabled
   kubernetes.core.helm:
@@ -78,7 +78,7 @@
       persistence:
         enabled: true
         size: 20Gi
-  when: node_role == 'master' and ollama_enabled
+  when: node_role == 'master' and kagent_enabled and ollama_enabled
 
 - name: Wait for Ollama to be ready
   kubernetes.core.k8s_info:
@@ -91,7 +91,7 @@
       type: Available
       status: "True"
     wait_timeout: 600
-  when: node_role == 'master' and ollama_enabled
+  when: node_role == 'master' and kagent_enabled and ollama_enabled
 
 - name: Pull Ollama model
   kubernetes.core.k8s_exec:
@@ -99,7 +99,7 @@
     pod: "{{ item.metadata.name }}"
     command: ollama pull {{ ollama_model }}
   loop: "{{ ollama_pods.resources }}"
-  when: node_role == 'master' and ollama_enabled
+  when: node_role == 'master' and kagent_enabled and ollama_enabled
 
 - name: Get Ollama pods
   kubernetes.core.k8s_info:
@@ -109,7 +109,7 @@
     label_selectors:
       - "app.kubernetes.io/name=ollama"
   register: ollama_pods
-  when: node_role == 'master' and ollama_enabled
+  when: node_role == 'master' and kagent_enabled and ollama_enabled
 
 - name: Create kagent configmap
   kubernetes.core.k8s:
@@ -140,7 +140,7 @@
               config:
                 repo: "{{ git_repo_url }}"
                 branch: "{{ git_branch }}"
-  when: node_role == 'master'
+  when: node_role == 'master' and kagent_enabled
 
 - name: Create kagent deployment
   kubernetes.core.k8s:
@@ -187,7 +187,7 @@
               - name: config
                 configMap:
                   name: kagent-config
-  when: node_role == 'master'
+  when: node_role == 'master' and kagent_enabled
 
 - name: Create kagent service
   kubernetes.core.k8s:
@@ -205,7 +205,7 @@
             targetPort: 8080
             name: http
         type: ClusterIP
-  when: node_role == 'master'
+  when: node_role == 'master' and kagent_enabled
 
 - name: Create kagent ingress
   kubernetes.core.k8s:
@@ -227,7 +227,7 @@
                       name: kagent
                       port:
                         number: 80
-  when: node_role == 'master'
+  when: node_role == 'master' and kagent_enabled
 
 - name: Wait for kagent to be ready
   kubernetes.core.k8s_info:
@@ -240,7 +240,7 @@
       type: Available
       status: "True"
     wait_timeout: 600
-  when: node_role == 'master'
+  when: node_role == 'master' and kagent_enabled
 
 - name: Display kagent status
   kubernetes.core.k8s_info:
@@ -249,7 +249,7 @@
     name: kagent
     namespace: "{{ kagent_namespace }}"
   register: kagent_status
-  when: node_role == 'master'
+  when: node_role == 'master' and kagent_enabled
 
 - name: Show kagent access information
   debug:
@@ -258,4 +258,4 @@
       - "Dashboard URL: http://kagent.{{ k3s_master_ip }}.nip.io"
       - "Or use port-forward: kubectl port-forward -n {{ kagent_namespace }} svc/kagent 8080:80"
       - "Then access: http://localhost:8080"
-  when: node_role == 'master'
+  when: node_role == 'master' and kagent_enabled

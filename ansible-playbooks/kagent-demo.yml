@@ -1,0 +1,80 @@
+---
+- name: Deploy Kagent on Single-Node Demo Cluster
+  hosts: k3s_cluster
+  become: yes
+  gather_facts: yes
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
+    # Enable kagent for demo
+    kagent_enabled: true
+    ollama_enabled: true
+    kagent_namespace: "kagent"
+
+  pre_tasks:
+    - name: Verify K3s cluster is running
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Node
+      register: cluster_nodes
+      when: node_role == 'master'
+
+    - name: Display cluster status
+      debug:
+        msg:
+          - "K3s cluster is running with {{ cluster_nodes.resources | length }} nodes"
+          - "Proceeding with kagent deployment..."
+      when: node_role == 'master'
+
+  roles:
+    - role: kagent
+      tags: [kagent, ai, dashboard]
+      when: node_role == 'master' and kagent_enabled
+
+  post_tasks:
+    - name: Wait for kagent to be ready
+      kubernetes.core.k8s_info:
+        api_version: apps/v1
+        kind: Deployment
+        name: kagent
+        namespace: "{{ kagent_namespace }}"
+        wait: true
+        wait_condition:
+          type: Available
+          status: "True"
+        wait_timeout: 600
+      when: node_role == 'master'
+
+    - name: Wait for Ollama to be ready
+      kubernetes.core.k8s_info:
+        api_version: apps/v1
+        kind: Deployment
+        name: ollama
+        namespace: "{{ kagent_namespace }}"
+        wait: true
+        wait_condition:
+          type: Available
+          status: "True"
+        wait_timeout: 600
+      when: node_role == 'master'
+
+    - name: Display kagent access information
+      debug:
+        msg:
+          - "🤖 Kagent demo environment deployed!"
+          - "🌐 Dashboard: http://kagent.{{ k3s_demo_ip }}.nip.io"
+          - "🔗 Port-forward: kubectl port-forward -n {{ kagent_namespace }} svc/kagent 8080:80"
+          - "💻 Local access: http://localhost:8080"
+          - "🧠 Ollama model: {{ ollama_model }}"
+          - "📊 Check status: kubectl get pods -n {{ kagent_namespace }}"
+      when: node_role == 'master'
+
+    - name: Show demo scenarios
+      debug:
+        msg:
+          - "🎯 Demo scenarios you can try:"
+          - "1. 'Show me all pods in the cluster'"
+          - "2. 'Scale the demo-nginx deployment to 3 replicas'"
+          - "3. 'Check the health of all services'"
+          - "4. 'Create a new namespace called production'"
+          - "5. 'Show me resource usage of all pods'"
+      when: node_role == 'master'

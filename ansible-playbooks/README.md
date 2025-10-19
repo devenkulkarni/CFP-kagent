@@ -81,15 +81,25 @@ ollama_model: "llama3.1:8b"
 kagent_namespace: "kagent"
 ```
 
-### 5. Deploy Everything
+### 5. Deploy Infrastructure Only (Recommended First)
 
 ```bash
-# Deploy complete stack
-ansible-playbook playbook.yml
+# Deploy only K3s + kubectl + Helm (no kagent or Ollama)
+ansible-playbook infrastructure-only.yml
 
 # Or deploy specific components
 ansible-playbook playbook.yml --tags "k3s"
 ansible-playbook playbook.yml --tags "kubectl,helm"
+```
+
+### 6. Deploy Kagent Later (Optional)
+
+```bash
+# First, enable kagent in group_vars/all.yml
+# Set: kagent_enabled: true
+# Set: ollama_enabled: true (if you want Ollama)
+
+# Then deploy kagent
 ansible-playbook playbook.yml --tags "kagent"
 ```
 
@@ -112,9 +122,10 @@ SSH_PRIVATE_KEY=~/.ssh/id_rsa
 |----------|---------|-------------|
 | `k3s_version` | `v1.28.5+k3s1` | K3s version to install |
 | `k3s_token` | `kagent-token-12345` | Cluster token |
+| `kagent_enabled` | `false` | Enable kagent deployment |
+| `ollama_enabled` | `false` | Enable Ollama deployment |
 | `ollama_model` | `llama3.1:8b` | Ollama model to use |
 | `kagent_namespace` | `kagent` | Kubernetes namespace |
-| `ollama_enabled` | `true` | Enable Ollama deployment |
 
 ## 📊 Accessing Services
 
