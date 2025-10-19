@@ -7,7 +7,6 @@
     ansible_python_interpreter: /usr/bin/python3
     # Enable kagent for demo
     kagent_enabled: true
-    ollama_enabled: true
     kagent_namespace: "kagent"
 
   pre_tasks:
@@ -44,18 +43,7 @@
         wait_timeout: 600
       when: node_role == 'master'
 
-    - name: Wait for Ollama to be ready
-      kubernetes.core.k8s_info:
-        api_version: apps/v1
-        kind: Deployment
-        name: ollama
-        namespace: "{{ kagent_namespace }}"
-        wait: true
-        wait_condition:
-          type: Available
-          status: "True"
-        wait_timeout: 600
-      when: node_role == 'master'
+# Ollama deployment removed - using external LLM providers
 
     - name: Display kagent access information
       debug:
@@ -64,7 +52,7 @@
           - "🌐 Dashboard: http://kagent.{{ k3s_demo_ip }}.nip.io"
           - "🔗 Port-forward: kubectl port-forward -n {{ kagent_namespace }} svc/kagent 8080:80"
           - "💻 Local access: http://localhost:8080"
-          - "🧠 Ollama model: {{ ollama_model }}"
+          - "🧠 LLM: OpenAI GPT-4 or Anthropic Claude"
           - "📊 Check status: kubectl get pods -n {{ kagent_namespace }}"
       when: node_role == 'master'
 

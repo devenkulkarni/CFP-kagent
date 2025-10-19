@@ -1,6 +1,6 @@
 ---
 # Global variables for all hosts
-ansible_user: ubuntu
+ansible_user: suse
 ansible_python_interpreter: /usr/bin/python3
 
 # SSH Configuration
@@ -45,9 +45,10 @@ kubectl_install_path: "/usr/local/bin"
 kagent_namespace: "kagent"
 kagent_version: "latest"
 kagent_enabled: false
-ollama_enabled: false
-ollama_model: "llama3.1:8b"
-ollama_gpu_enabled: false
+
+# LLM Provider Configuration
+openai_api_key: "your-openai-api-key-here"
+anthropic_api_key: "your-anthropic-api-key-here"
 
 # Monitoring Configuration
 prometheus_enabled: true
@@ -61,16 +62,8 @@ git_branch: "main"
 # Resource Limits
 kagent_resources:
   requests:
+    memory: "1Gi"
+    cpu: "0.5"
+  limits:
     memory: "2Gi"
     cpu: "1"
-  limits:
-    memory: "4Gi"
-    cpu: "2"
-
-ollama_resources:
-  requests:
-    memory: "4Gi"
-    cpu: "2"
-  limits:
-    memory: "8Gi"
-    cpu: "4"

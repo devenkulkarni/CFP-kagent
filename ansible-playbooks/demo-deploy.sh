@@ -132,7 +132,7 @@ show_demo_info() {
         echo -e "  • Kagent Dashboard: http://kagent.${DEMO_IP}.nip.io"
         echo ""
         echo -e "${GREEN}🔧 Management Commands:${NC}"
-        echo -e "  • Copy kubeconfig: scp ubuntu@${DEMO_IP}:./kubeconfig-demo ~/.kube/config"
+        echo -e "  • Copy kubeconfig: scp suse@${DEMO_IP}:./kubeconfig-demo ~/.kube/config"
         echo -e "  • Check cluster: kubectl get nodes"
         echo -e "  • Check demo app: kubectl get pods -n demo"
         echo -e "  • Check kagent: kubectl get pods -n kagent"

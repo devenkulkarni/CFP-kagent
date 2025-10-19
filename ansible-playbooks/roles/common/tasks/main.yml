@@ -1,17 +1,16 @@
 ---
 - name: Update package cache
-  apt:
-    update_cache: yes
-    cache_valid_time: 3600
+  zypper:
+    refresh: yes
   when: update_packages
 
 - name: Upgrade packages
-  apt:
-    upgrade: dist
+  zypper:
+    update: yes
   when: upgrade_packages
 
 - name: Install essential packages
-  apt:
+  zypper:
     name:
       - curl
       - wget
@@ -19,13 +18,13 @@
       - vim
       - htop
       - unzip
-      - software-properties-common
-      - apt-transport-https
       - ca-certificates
-      - gnupg
+      - gpg2
       - lsb-release
       - jq
       - yq
+      - python3-pip
+      - python3-setuptools
     state: present
 
 - name: Set timezone
@@ -47,31 +46,34 @@
     state: started
 
 - name: Configure firewall
-  ufw:
+  firewalld:
     state: enabled
-    policy: deny
-    direction: incoming
+    permanent: yes
+    immediate: yes
   when: firewall_enabled
 
 - name: Allow SSH
-  ufw:
-    rule: allow
-    port: "22"
-    proto: tcp
+  firewalld:
+    port: "22/tcp"
+    permanent: yes
+    immediate: yes
+    state: enabled
   when: firewall_enabled and firewall_allow_ssh
 
 - name: Allow K3s API server
-  ufw:
-    rule: allow
-    port: "6443"
-    proto: tcp
+  firewalld:
+    port: "6443/tcp"
+    permanent: yes
+    immediate: yes
+    state: enabled
   when: firewall_enabled and firewall_allow_k3s
 
 - name: Allow K3s node communication
-  ufw:
-    rule: allow
-    port: "10250"
-    proto: tcp
+  firewalld:
+    port: "10250/tcp"
+    permanent: yes
+    immediate: yes
+    state: enabled
   when: firewall_enabled and firewall_allow_k3s
 
 - name: Create kagent user

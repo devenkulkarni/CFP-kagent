@@ -58,58 +58,21 @@
         apiGroup: rbac.authorization.k8s.io
   when: node_role == 'master' and kagent_enabled
 
-- name: Install Ollama if enabled
-  kubernetes.core.helm:
-    name: ollama
-    chart_ref: ollama/ollama
-    release_namespace: "{{ kagent_namespace }}"
-    create_namespace: true
-    values:
-      service:
-        type: ClusterIP
-        port: 80
-      resources:
-        requests:
-          memory: "{{ ollama_resources.requests.memory }}"
-          cpu: "{{ ollama_resources.requests.cpu }}"
-        limits:
-          memory: "{{ ollama_resources.limits.memory }}"
-          cpu: "{{ ollama_resources.limits.cpu }}"
-      persistence:
-        enabled: true
-        size: 20Gi
-  when: node_role == 'master' and kagent_enabled and ollama_enabled
+# Ollama deployment removed - use external LLM providers instead
 
-- name: Wait for Ollama to be ready
-  kubernetes.core.k8s_info:
-    api_version: apps/v1
-    kind: Deployment
-    name: ollama
+- name: Create kagent secrets
+  kubernetes.core.k8s:
+    name: kagent-secrets
     namespace: "{{ kagent_namespace }}"
-    wait: true
-    wait_condition:
-      type: Available
-      status: "True"
-    wait_timeout: 600
-  when: node_role == 'master' and kagent_enabled and ollama_enabled
-
-- name: Pull Ollama model
-  kubernetes.core.k8s_exec:
-    namespace: "{{ kagent_namespace }}"
-    pod: "{{ item.metadata.name }}"
-    command: ollama pull {{ ollama_model }}
-  loop: "{{ ollama_pods.resources }}"
-  when: node_role == 'master' and kagent_enabled and ollama_enabled
-
-- name: Get Ollama pods
-  kubernetes.core.k8s_info:
     api_version: v1
-    kind: Pod
-    namespace: "{{ kagent_namespace }}"
-    label_selectors:
-      - "app.kubernetes.io/name=ollama"
-  register: ollama_pods
-  when: node_role == 'master' and kagent_enabled and ollama_enabled
+    kind: Secret
+    state: present
+    definition:
+      type: Opaque
+      data:
+        openai-api-key: "{{ openai_api_key | b64encode }}"
+        anthropic-api-key: "{{ anthropic_api_key | b64encode }}"
+  when: node_role == 'master' and kagent_enabled
 
 - name: Create kagent configmap
   kubernetes.core.k8s:
@@ -122,12 +85,12 @@
       data:
         kagent.yaml: |
           providers:
-            ollama:
-              host: "http://ollama.{{ kagent_namespace }}.svc.cluster.local"
-              model: "{{ ollama_model }}"
             openai:
               apiKey: "${OPENAI_API_KEY}"
               model: "gpt-4"
+            anthropic:
+              apiKey: "${ANTHROPIC_API_KEY}"
+              model: "claude-3-sonnet"
           tools:
             - name: "kubernetes"
               type: "kubernetes"
@@ -172,6 +135,16 @@
                     value: "/etc/kagent/kagent.yaml"
                   - name: KAGENT_NAMESPACE
                     value: "{{ kagent_namespace }}"
+                  - name: OPENAI_API_KEY
+                    valueFrom:
+                      secretKeyRef:
+                        name: kagent-secrets
+                        key: openai-api-key
+                  - name: ANTHROPIC_API_KEY
+                    valueFrom:
+                      secretKeyRef:
+                        name: kagent-secrets
+                        key: anthropic-api-key
                 resources:
                   requests:
                     memory: "{{ kagent_resources.requests.memory }}"

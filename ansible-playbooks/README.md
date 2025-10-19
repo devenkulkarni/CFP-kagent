@@ -25,7 +25,7 @@ This directory contains Ansible playbooks for deploying a complete kagent enviro
 - Python 3.6+ on target servers
 
 ### Target Servers
-- Ubuntu 20.04+ (recommended)
+- SUSE Linux Enterprise 16 (SLE16)
 - Minimum 4GB RAM per node
 - Minimum 2 CPU cores per node
 - 20GB+ disk space per node
@@ -61,11 +61,11 @@ all:
       hosts:
         k3s-master:
           ansible_host: "192.168.1.100"  # Your master IP
-          ansible_user: "ubuntu"
+          ansible_user: "suse"
           ansible_ssh_private_key_file: "~/.ssh/id_rsa"
         k3s-worker-1:
           ansible_host: "192.168.1.101"  # Your worker IP
-          ansible_user: "ubuntu"
+          ansible_user: "suse"
           ansible_ssh_private_key_file: "~/.ssh/id_rsa"
 ```
 
