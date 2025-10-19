@@ -1,0 +1,76 @@
+---
+- name: Deploy K3s Cluster with Kagent
+  hosts: k3s_cluster
+  become: yes
+  gather_facts: yes
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
+
+  pre_tasks:
+    - name: Update package cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+      when: ansible_os_family == "Debian"
+
+    - name: Install Python3 and pip
+      apt:
+        name:
+          - python3
+          - python3-pip
+          - python3-apt
+        state: present
+      when: ansible_os_family == "Debian"
+
+    - name: Install required Python packages
+      pip:
+        name:
+          - kubernetes
+          - openshift
+          - pyyaml
+          - jinja2
+        state: present
+
+  roles:
+    - role: common
+      tags: [common, setup]
+
+    - role: k3s
+      tags: [k3s, kubernetes]
+      when: node_role is defined
+
+    - role: kubectl-helm
+      tags: [kubectl, helm, tools]
+      when: node_role == 'master'
+
+    - role: kagent
+      tags: [kagent, ai, dashboard]
+      when: node_role == 'master'
+
+  post_tasks:
+    - name: Display cluster information
+      debug:
+        msg:
+          - "K3s cluster deployment completed!"
+          - "Master node: {{ k3s_master_ip }}"
+          - "Cluster token: {{ k3s_token }}"
+          - "Kagent namespace: {{ kagent_namespace }}"
+          - "Kagent dashboard: http://kagent.{{ k3s_master_ip }}.nip.io"
+      when: node_role == 'master'
+
+    - name: Save kubeconfig
+      copy:
+        content: "{{ lookup('file', '/home/' + ansible_user + '/.kube/config') }}"
+        dest: "./kubeconfig"
+        mode: '0600'
+      when: node_role == 'master'
+
+    - name: Display next steps
+      debug:
+        msg:
+          - "Next steps:"
+          - "1. Copy kubeconfig to your local machine: scp {{ ansible_user }}@{{ k3s_master_ip }}:./kubeconfig ~/.kube/config"
+          - "2. Access kagent dashboard: http://kagent.{{ k3s_master_ip }}.nip.io"
+          - "3. Or use port-forward: kubectl port-forward -n {{ kagent_namespace }} svc/kagent 8080:80"
+          - "4. Check cluster status: kubectl get nodes"
+      when: node_role == 'master'

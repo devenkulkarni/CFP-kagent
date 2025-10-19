@@ -1,0 +1,75 @@
+---
+# Global variables for all hosts
+ansible_user: ubuntu
+ansible_python_interpreter: /usr/bin/python3
+
+# SSH Configuration
+ssh_private_key: "~/.ssh/id_rsa"
+ssh_public_key: "~/.ssh/id_rsa.pub"
+
+# System Configuration
+timezone: "UTC"
+ntp_servers:
+  - "pool.ntp.org"
+  - "time.google.com"
+
+# Package Management
+update_packages: true
+upgrade_packages: false
+
+# Firewall Configuration
+firewall_enabled: true
+firewall_allow_ssh: true
+firewall_allow_k3s: true
+
+# K3s Configuration
+k3s_version: "v1.28.5+k3s1"
+k3s_token: "kagent-token-12345"
+k3s_cluster_cidr: "10.42.0.0/16"
+k3s_service_cidr: "10.43.0.0/16"
+k3s_cluster_dns: "10.43.0.10"
+k3s_disable_components:
+  - "traefik"
+  - "servicelb"
+  - "local-storage"
+
+# Helm Configuration
+helm_version: "v3.13.2"
+helm_install_path: "/usr/local/bin"
+
+# Kubectl Configuration
+kubectl_version: "v1.28.5"
+kubectl_install_path: "/usr/local/bin"
+
+# Kagent Configuration
+kagent_namespace: "kagent"
+kagent_version: "latest"
+ollama_enabled: true
+ollama_model: "llama3.1:8b"
+ollama_gpu_enabled: false
+
+# Monitoring Configuration
+prometheus_enabled: true
+grafana_enabled: true
+
+# GitOps Configuration
+argocd_enabled: true
+git_repo_url: "https://github.com/Spectro34/CFP-kagent.git"
+git_branch: "main"
+
+# Resource Limits
+kagent_resources:
+  requests:
+    memory: "2Gi"
+    cpu: "1"
+  limits:
+    memory: "4Gi"
+    cpu: "2"
+
+ollama_resources:
+  requests:
+    memory: "4Gi"
+    cpu: "2"
+  limits:
+    memory: "8Gi"
+    cpu: "4"

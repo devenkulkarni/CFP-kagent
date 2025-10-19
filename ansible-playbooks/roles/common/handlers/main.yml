@@ -1,0 +1,9 @@
+---
+- name: restart timesyncd
+  systemd:
+    name: systemd-timesyncd
+    state: restarted
+
+- name: restart ufw
+  ufw:
+    state: reloaded

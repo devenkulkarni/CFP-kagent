@@ -1,0 +1,96 @@
+---
+- name: Update package cache
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+  when: update_packages
+
+- name: Upgrade packages
+  apt:
+    upgrade: dist
+  when: upgrade_packages
+
+- name: Install essential packages
+  apt:
+    name:
+      - curl
+      - wget
+      - git
+      - vim
+      - htop
+      - unzip
+      - software-properties-common
+      - apt-transport-https
+      - ca-certificates
+      - gnupg
+      - lsb-release
+      - jq
+      - yq
+    state: present
+
+- name: Set timezone
+  timezone:
+    name: "{{ timezone }}"
+
+- name: Configure NTP
+  lineinfile:
+    path: /etc/systemd/timesyncd.conf
+    line: "NTP={{ item }}"
+    create: yes
+  loop: "{{ ntp_servers }}"
+  notify: restart timesyncd
+
+- name: Enable and start timesyncd
+  systemd:
+    name: systemd-timesyncd
+    enabled: yes
+    state: started
+
+- name: Configure firewall
+  ufw:
+    state: enabled
+    policy: deny
+    direction: incoming
+  when: firewall_enabled
+
+- name: Allow SSH
+  ufw:
+    rule: allow
+    port: "22"
+    proto: tcp
+  when: firewall_enabled and firewall_allow_ssh
+
+- name: Allow K3s API server
+  ufw:
+    rule: allow
+    port: "6443"
+    proto: tcp
+  when: firewall_enabled and firewall_allow_k3s
+
+- name: Allow K3s node communication
+  ufw:
+    rule: allow
+    port: "10250"
+    proto: tcp
+  when: firewall_enabled and firewall_allow_k3s
+
+- name: Create kagent user
+  user:
+    name: kagent
+    system: yes
+    shell: /bin/bash
+    home: /opt/kagent
+    create_home: yes
+
+- name: Create kagent directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: kagent
+    group: kagent
+    mode: '0755'
+  loop:
+    - /opt/kagent
+    - /opt/kagent/config
+    - /opt/kagent/logs
+    - /opt/kagent/data

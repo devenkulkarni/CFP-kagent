@@ -1,0 +1,109 @@
+---
+- name: Download kubectl binary
+  get_url:
+    url: "https://dl.k8s.io/release/{{ kubectl_version }}/bin/linux/amd64/kubectl"
+    dest: /tmp/kubectl
+    mode: '0755'
+
+- name: Install kubectl
+  copy:
+    src: /tmp/kubectl
+    dest: "{{ kubectl_install_path }}/kubectl"
+    mode: '0755'
+    remote_src: yes
+
+- name: Create kubectl symlink
+  file:
+    src: "{{ kubectl_install_path }}/kubectl"
+    dest: /usr/local/bin/kubectl
+    state: link
+
+- name: Download Helm installation script
+  get_url:
+    url: "https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3"
+    dest: /tmp/get_helm.sh
+    mode: '0755'
+
+- name: Install Helm
+  shell: |
+    HELM_INSTALL_DIR="{{ helm_install_path }}" \
+    /tmp/get_helm.sh --version {{ helm_version }}
+  args:
+    creates: "{{ helm_install_path }}/helm"
+
+- name: Create Helm symlink
+  file:
+    src: "{{ helm_install_path }}/helm"
+    dest: /usr/local/bin/helm
+    state: link
+
+- name: Verify kubectl installation
+  command: kubectl version --client
+  register: kubectl_version_output
+  changed_when: false
+
+- name: Display kubectl version
+  debug:
+    var: kubectl_version_output.stdout_lines
+
+- name: Verify Helm installation
+  command: helm version
+  register: helm_version_output
+  changed_when: false
+
+- name: Display Helm version
+  debug:
+    var: helm_version_output.stdout_lines
+
+- name: Add Helm repositories
+  kubernetes.core.helm_repository:
+    name: "{{ item.name }}"
+    repo_url: "{{ item.url }}"
+  loop:
+    - name: prometheus-community
+      url: https://prometheus-community.github.io/helm-charts
+    - name: grafana
+      url: https://grafana.github.io/helm-charts
+    - name: argo
+      url: https://argoproj.github.io/argo-helm
+    - name: jetstack
+      url: https://charts.jetstack.io
+  when: node_role == 'master'
+
+- name: Update Helm repositories
+  kubernetes.core.helm:
+    name: dummy
+    state: absent
+  register: helm_update
+  changed_when: false
+  when: node_role == 'master'
+
+- name: Install cert-manager
+  kubernetes.core.helm:
+    name: cert-manager
+    chart_ref: jetstack/cert-manager
+    release_namespace: cert-manager
+    create_namespace: true
+    values:
+      installCRDs: true
+      resources:
+        requests:
+          memory: "256Mi"
+          cpu: "100m"
+        limits:
+          memory: "512Mi"
+          cpu: "200m"
+  when: node_role == 'master'
+
+- name: Wait for cert-manager to be ready
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: Deployment
+    name: cert-manager
+    namespace: cert-manager
+    wait: true
+    wait_condition:
+      type: Available
+      status: "True"
+    wait_timeout: 300
+  when: node_role == 'master'
