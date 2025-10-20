@@ -18,6 +18,18 @@ Kagent for prompting interface, working aiops model diagnostic agent with mcp to
 
 ***
 
+### Proposed Architecture:
+
+| Component          | Technology                        | Role                                                                                                                                 | MCP Server / Tool                                                 |
+|--------------------|-----------------------------------|--------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------|
+| AI Orchestrator    | Kagent Agent                      | The main intelligence. Takes a natural language request, breaks it down, uses tools to execute, and manages the end-to-end workflow. | N/A (Runs the flow)                                               |
+| Cluster Management | RKE2/Kubernetes                   | Executes kubectl commands (e.g., to check cluster state before/after changes).                                                       | Kubernetes MCP Server (Comes with Kagent)                         |
+| Git Management     | GitHub/Git                        | Creates the YAML manifest, commits it to a new branch, and opens a Pull Request for human review.                                    | Custom Git MCP Server (The key piece you need to build/configure) | 
+| CD Automation      | ArgoCD                            | Applies the approved changes to the cluster once the PR is merged.                                                                   | ArgoCD MCP Server (Likely a custom tool or extension)             | 
+| Human Interface    | ChatOps Tool (e.g., Slack, Teams) | Where the user makes the request, receives the PR link, and gets the final confirmation.                                             | ChatOps Tool MCP Server (For bidirectional communication)         | 
+
+
+
 ## 2. Prerequisites
 - Kubernetes cluster and kubectl to interact with it.
 - Helm
