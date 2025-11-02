@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Kagent SUSE AI Stack Add-on Deployment Script
-# This script deploys kagent on top of an existing SUSE AI Stack
+# Kagent Add-on Deployment Script
+# This script deploys kagent on a Kubernetes cluster with Ollama or GPT API support
 
 set -e
 
@@ -56,16 +56,16 @@ check_prerequisites() {
         exit 1
     fi
     
-    # Check if SUSE AI Stack is running
+    # Check if Kubernetes cluster is accessible
     if ! kubectl get nodes >/dev/null 2>&1; then
-        print_error "SUSE AI Stack cluster is not accessible."
-        print_status "Please ensure SUSE AI Stack is deployed and kubectl is configured."
+        print_error "Kubernetes cluster is not accessible."
+        print_status "Please ensure Kubernetes is deployed and kubectl is configured."
         exit 1
     fi
     
-    # Check if Ollama is running
-    if ! kubectl get pods -n ollama >/dev/null 2>&1; then
-        print_warning "Ollama namespace not found. SUSE AI Stack may not be fully deployed."
+    # Check if Ollama is running (optional)
+    if kubectl get namespace ollama >/dev/null 2>&1 && ! kubectl get pods -n ollama >/dev/null 2>&1; then
+        print_warning "Ollama namespace found but no pods running. Kagent can use GPT API instead."
     fi
     
     print_success "Prerequisites check passed"
@@ -95,11 +95,15 @@ validate_config() {
     
     # Check if API keys are set
     if grep -q "your-openai-api-key-here" config/kagent-config.yml; then
-        print_warning "OpenAI API key not configured. Kagent will use Ollama only."
+        print_warning "OpenAI API key not configured. Kagent will use Ollama or Anthropic API."
     fi
     
     if grep -q "your-anthropic-api-key-here" config/kagent-config.yml; then
-        print_warning "Anthropic API key not configured. Kagent will use Ollama only."
+        print_warning "Anthropic API key not configured. Kagent will use Ollama or OpenAI API."
+    fi
+    
+    if ! grep -q "ollama_model:" config/kagent-config.yml || grep -q 'ollama_model: ""' config/kagent-config.yml; then
+        print_warning "Ollama not configured. Ensure at least one LLM provider (Ollama, OpenAI, or Anthropic) is configured."
     fi
     
     print_success "Configuration validated"
@@ -107,7 +111,7 @@ validate_config() {
 
 # Function to deploy kagent add-on
 deploy_kagent() {
-    print_demo "Deploying kagent add-on to SUSE AI Stack..."
+    print_demo "Deploying kagent add-on to Kubernetes cluster..."
     
     # Load configuration
     export ANSIBLE_EXTRA_VARS="@config/kagent-config.yml"
@@ -130,7 +134,6 @@ show_access_info() {
         echo -e "${GREEN}🎯 Kagent Add-on Access:${NC}"
         echo -e "  • Kagent Dashboard: http://kagent.${CLUSTER_IP}.nip.io"
         echo -e "  • ArgoCD GitOps: http://argocd.${CLUSTER_IP}.nip.io"
-        echo -e "  • Open WebUI: http://openwebui.${CLUSTER_IP}.nip.io (from SUSE AI Stack)"
         echo ""
         echo -e "${GREEN}🔧 Management Commands:${NC}"
         echo -e "  • Check kagent: kubectl get pods -n kagent"
@@ -149,7 +152,7 @@ show_access_info() {
 
 # Function to show help
 show_help() {
-    echo "Kagent SUSE AI Stack Add-on Deployment Script"
+    echo "Kagent Add-on Deployment Script"
     echo ""
     echo "Usage: $0 [OPTIONS]"
     echo ""
@@ -159,10 +162,10 @@ show_help() {
     echo "  --help             Show this help message"
     echo ""
     echo "Prerequisites:"
-    echo "  1. SUSE AI Stack must be deployed and running"
+    echo "  1. Kubernetes cluster must be deployed and running"
     echo "  2. kubectl must be configured to access the cluster"
     echo "  3. Copy config/kagent-config.yml.example to config/kagent-config.yml"
-    echo "  4. Configure API keys in config/kagent-config.yml"
+    echo "  4. Configure at least one LLM provider (Ollama, OpenAI API, or Anthropic API) in config/kagent-config.yml"
     echo ""
     echo "Examples:"
     echo "  $0 --check         # Check prerequisites"

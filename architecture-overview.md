@@ -1,4 +1,4 @@
-# SUSECON 2026 - Architecture Overview
+# Architecture Overview - AIOps and GitOps for Cloud-Native Infrastructure
 
 ## System Architecture Diagram
 
@@ -16,8 +16,7 @@ graph TB
     MCP[🔧 MCP Server<br/>K8s + Git + Prometheus Tools]
     
     %% Infrastructure
-    RKE2[☸️ RKE2 Cluster]
-    Harvester[🚜 Harvester HCI]
+    K8s[☸️ Kubernetes Cluster]
     
     %% Monitoring
     Prometheus[📊 Prometheus]
@@ -33,17 +32,14 @@ graph TB
     Dashboard --> Kagent
     Kagent --> Ollama
     Kagent --> MCP
-    MCP --> RKE2
-    MCP --> Harvester
+    MCP --> K8s
     MCP --> Prometheus
     MCP --> GitRepo
-    RKE2 --> Prometheus
-    Harvester --> Prometheus
+    K8s --> Prometheus
     Prometheus --> Alerts
     Alerts --> Kagent
     GitRepo --> ArgoCD
-    ArgoCD --> RKE2
-    ArgoCD --> Harvester
+    ArgoCD --> K8s
     MCP --> PR
     PR --> GitRepo
     
@@ -58,7 +54,7 @@ graph TB
     class User,Dashboard userLayer
     class Kagent,Ollama aiLayer
     class MCP mcpLayer
-    class RKE2,Harvester infraLayer
+    class K8s infraLayer
     class Prometheus,Alerts monitorLayer
     class GitRepo,ArgoCD,PR gitopsLayer
 ```
@@ -109,20 +105,21 @@ sequenceDiagram
 
 ## Key Benefits
 
-- ✅ **AI-Powered Automation** with local LLM
+- ✅ **AI-Powered Automation** with Ollama (local LLM) or GPT API (OpenAI)
 - ✅ **GitOps Workflow** with human oversight  
 - ✅ **Built-in Chat Interface** for natural language
 - ✅ **Full Observability** with Prometheus
-- ✅ **Secure & Private** - all data stays local
+- ✅ **Flexible AI Backend** - use local Ollama for privacy or GPT API for advanced capabilities
 - ✅ **Human Accountability** through PR reviews
 
 ## Technology Stack
 
 | Component | Technology | Purpose |
 |-----------|------------|---------|
-| AI Agent | Kagent + Ollama | Intelligent automation |
+| AI Agent | Kagent + Ollama/GPT API | Intelligent automation with local or cloud LLM |
+| LLM Providers | Ollama (local) or OpenAI GPT API | Language model for AI operations |
 | MCP Server | Custom tools | K8s + Git + Prometheus integration |
-| Infrastructure | RKE2 + Harvester | SUSE cloud-native platforms |
+| Infrastructure | Kubernetes | Cloud-native platform |
 | GitOps | ArgoCD + Git | Infrastructure as Code |
 | Monitoring | Prometheus + Grafana | Observability and alerting |
 | Interface | Kagent Dashboard | Built-in chat interface |

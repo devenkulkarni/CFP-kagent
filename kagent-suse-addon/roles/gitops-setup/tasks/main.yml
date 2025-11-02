@@ -67,7 +67,7 @@
         source:
           repoURL: "{{ git_repo_url }}"
           targetRevision: "{{ git_branch }}"
-          path: "kagent-suse-addon/manifests"
+          path: "kagent-addon/manifests"
         destination:
           server: https://kubernetes.default.svc
           namespace: "{{ kagent_namespace }}"

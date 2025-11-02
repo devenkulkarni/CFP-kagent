@@ -1,18 +1,16 @@
-# Kagent SUSE AI Stack Add-on
+# Kagent Add-on
 
-This directory contains the kagent add-on for the SUSE AI Stack, providing AIOps, GitOps, and ChatOps capabilities on top of the existing SUSE AI infrastructure.
+This directory contains the kagent add-on providing AIOps, GitOps, and ChatOps capabilities using Ollama (local LLM) or GPT API (OpenAI) for intelligent automation.
 
 ## 🏗️ Architecture
 
 ```
-SUSE AI Stack (Base Layer)
-├── RKE2 Kubernetes ✅
-├── Ollama LLM ✅
-├── Open WebUI ✅
-├── Milvus Vector DB ✅
-├── SUSE Observability ✅
+Base Infrastructure Layer
+├── Kubernetes Cluster ✅
+├── Ollama LLM (optional) ✅
+├── Prometheus Monitoring ✅
 └── Kagent Add-on (This Layer)
-    ├── Kagent AI Agent
+    ├── Kagent AI Agent (Ollama or GPT API)
     ├── MCP Tools (K8s + Git + Prometheus)
     ├── GitOps with ArgoCD
     └── ChatOps Dashboard
@@ -22,13 +20,13 @@ SUSE AI Stack (Base Layer)
 
 ### Prerequisites
 
-1. **Deploy SUSE AI Stack first:**
-   ```bash
-   cd suse-ai-stack
-   ./setup_private_ai_stack.sh
-   ```
+1. **Kubernetes cluster** - Ensure you have a running Kubernetes cluster with kubectl configured
 
-2. **Configure kagent add-on:**
+2. **LLM Provider** - Choose one of the following:
+   - **Ollama** (local LLM): Deploy Ollama in your cluster or use an external Ollama instance
+   - **OpenAI GPT API**: Configure an API key for GPT-4 or other OpenAI models
+
+3. **Configure kagent add-on:**
    ```bash
    cp config/kagent-config.yml.example config/kagent-config.yml
    # Edit kagent-config.yml with your settings
@@ -42,7 +40,7 @@ SUSE AI Stack (Base Layer)
 ## 📁 Structure
 
 ```
-kagent-suse-addon/
+kagent-addon/
 ├── playbooks/
 │   ├── deploy-kagent-addon.yml    # Main deployment playbook
 │   └── configure-gitops.yml       # GitOps configuration
@@ -53,7 +51,7 @@ kagent-suse-addon/
 ├── config/
 │   ├── kagent-config.yml.example  # Configuration template
 │   └── inventory/
-│       └── hosts.yml              # Inventory for SUSE AI Stack
+│       └── hosts.yml              # Inventory for Kubernetes cluster
 └── docs/
     ├── integration-guide.md       # Integration documentation
     └── demo-scenarios.md          # Demo scenarios
@@ -65,7 +63,7 @@ kagent-suse-addon/
 - **GitOps**: AI-suggested changes through Git workflow
 - **ChatOps**: Natural language interface for operations
 - **MCP Integration**: Kubernetes, Git, and Prometheus tools
-- **SUSE AI Stack Integration**: Leverages existing Ollama and observability
+- **Flexible LLM Integration**: Uses Ollama (local) or GPT API (OpenAI) for AI operations
 
 ## 🔧 Configuration
 
@@ -80,13 +78,13 @@ Edit `config/kagent-config.yml` to configure:
 
 After deployment:
 - **Kagent Dashboard**: `http://kagent.<cluster-ip>.nip.io`
-- **Open WebUI**: `http://openwebui.<cluster-ip>.nip.io` (from SUSE AI Stack)
-- **SUSE Observability**: Access via Rancher Prime
+- **ArgoCD GitOps**: `http://argocd.<cluster-ip>.nip.io`
+- **Prometheus Monitoring**: Access via your monitoring stack
 
 ## 🎪 Demo Scenarios
 
 See `docs/demo-scenarios.md` for presentation-ready demos including:
 - Infrastructure management via ChatOps
-- AI-powered troubleshooting
+- AI-powered troubleshooting using Ollama or GPT API
 - GitOps workflow demonstrations
-- Integration with SUSE AI Stack components
+- Integration with Kubernetes and monitoring components

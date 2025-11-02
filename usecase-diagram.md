@@ -1,4 +1,4 @@
-# SUSECON 2026 - CFP Use Cases Architecture
+# Use Cases Architecture - AIOps and GitOps for Cloud-Native Infrastructure
 
 ## Mermaid Diagram
 
@@ -25,8 +25,7 @@ graph TB
 
     %% Infrastructure Layer
     subgraph "Kubernetes Infrastructure"
-        RKE2[☸️ RKE2 Cluster<br/>SUSE Kubernetes]
-        Harvester[🚜 Harvester<br/>SUSE HCI Platform]
+        K8s[☸️ Kubernetes Cluster]
         Apps[📱 Applications<br/>Microservices]
     end
 
@@ -65,15 +64,13 @@ graph TB
     Kagent --> MCP_Prometheus
 
     %% MCP to Infrastructure
-    MCP_K8s --> RKE2
-    MCP_K8s --> Harvester
+    MCP_K8s --> K8s
     MCP_K8s --> Apps
     MCP_Prometheus --> Prometheus
     MCP_Git --> GitRepo
 
     %% Monitoring Flow
-    RKE2 --> Prometheus
-    Harvester --> Prometheus
+    K8s --> Prometheus
     Apps --> Prometheus
     Prometheus --> Grafana
     Prometheus --> Alerts
@@ -81,8 +78,7 @@ graph TB
 
     %% GitOps Flow
     GitRepo --> ArgoCD
-    ArgoCD --> RKE2
-    ArgoCD --> Harvester
+    ArgoCD --> K8s
     MCP_Git --> PR
     PR --> GitRepo
 
@@ -116,7 +112,7 @@ graph TB
     class User,Dashboard userInterface
     class Kagent,Ollama aiLayer
     class MCP_K8s,MCP_Git,MCP_Prometheus mcpLayer
-    class RKE2,Harvester,Apps infrastructure
+    class K8s,Apps infrastructure
     class Prometheus,Grafana,Alerts monitoring
     class GitRepo,ArgoCD,PR gitops
     class UC1_Flow,UC2_Flow usecase
@@ -128,26 +124,26 @@ graph TB
 **Flow:** User → ChatOps → Kagent → MCP Tools → GitOps → Human Review → ArgoCD → Infrastructure
 
 1. **User Request**: DevOps engineer requests infrastructure changes via ChatOps
-2. **AI Analysis**: Kagent analyzes requirements using local Ollama LLM
+2. **AI Analysis**: Kagent analyzes requirements using Ollama (local LLM) or GPT API (OpenAI)
 3. **GitOps PR**: AI creates pull request with infrastructure changes
 4. **Human Review**: Human reviews and approves changes for accountability
-5. **Deployment**: ArgoCD applies approved changes to RKE2/Harvester
+5. **Deployment**: ArgoCD applies approved changes to Kubernetes cluster
 
 ### Use Case 2: Alert Management
 **Flow:** Prometheus → Alerts → Kagent → MCP Tools → Resolution → ChatOps → Documentation
 
 1. **Alert Detection**: Prometheus detects performance or health issues
-2. **AI Analysis**: Kagent analyzes alerts and correlates with metrics
+2. **AI Analysis**: Kagent analyzes alerts and correlates with metrics using Ollama or GPT API
 3. **Runbook Execution**: AI executes appropriate runbooks via MCP tools
-4. **Resolution**: AI applies fixes to Kubernetes/Harvester infrastructure
+4. **Resolution**: AI applies fixes to Kubernetes infrastructure
 5. **Communication**: AI reports resolution steps via ChatOps
 6. **Documentation**: AI documents the incident and resolution in Git
 
 ## Key Benefits
 
-- **🤖 AI-Powered**: Intelligent automation with local LLM
+- **🤖 AI-Powered**: Intelligent automation with Ollama (local) or GPT API (OpenAI)
 - **🔄 GitOps**: Infrastructure as Code with human oversight
 - **💬 ChatOps**: Natural language interface for operations
-- **🔒 Secure**: All data stays within your infrastructure
+- **🔒 Flexible**: Use local Ollama for privacy or GPT API for advanced capabilities
 - **👥 Human-in-the-Loop**: Accountability through PR reviews
 - **📊 Observability**: Full monitoring and alerting integration
