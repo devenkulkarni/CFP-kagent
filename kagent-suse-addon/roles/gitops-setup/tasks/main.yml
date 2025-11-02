@@ -1,0 +1,106 @@
+---
+- name: Install ArgoCD
+  kubernetes.core.helm:
+    name: argocd
+    chart_ref: argo/argo-cd
+    release_namespace: argocd
+    create_namespace: true
+    values:
+      server:
+        service:
+          type: ClusterIP
+        ingress:
+          enabled: true
+          hosts:
+            - "argocd.{{ cluster_ip }}.nip.io"
+          tls:
+            - secretName: argocd-server-tls
+              hosts:
+                - "argocd.{{ cluster_ip }}.nip.io"
+      configs:
+        params:
+          server.insecure: true
+  when: node_role == 'master'
+
+- name: Wait for ArgoCD to be ready
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: Deployment
+    name: argocd-server
+    namespace: argocd
+    wait: true
+    wait_condition:
+      type: Available
+      status: "True"
+    wait_timeout: 600
+  when: node_role == 'master'
+
+- name: Get ArgoCD admin password
+  kubernetes.core.k8s_exec:
+    namespace: argocd
+    pod: "{{ item.metadata.name }}"
+    command: argocd admin initial-password
+  loop: "{{ argocd_pods.resources }}"
+  register: argocd_password
+  when: node_role == 'master'
+
+- name: Get ArgoCD pods
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Pod
+    namespace: argocd
+    label_selectors:
+      - "app.kubernetes.io/name=argocd-server"
+  register: argocd_pods
+  when: node_role == 'master'
+
+- name: Create GitOps application
+  kubernetes.core.k8s:
+    name: kagent-gitops
+    namespace: argocd
+    api_version: argoproj.io/v1alpha1
+    kind: Application
+    state: present
+    definition:
+      spec:
+        project: default
+        source:
+          repoURL: "{{ git_repo_url }}"
+          targetRevision: "{{ git_branch }}"
+          path: "kagent-addon/manifests"
+        destination:
+          server: https://kubernetes.default.svc
+          namespace: "{{ kagent_namespace }}"
+        syncPolicy:
+          automated:
+            prune: true
+            selfHeal: true
+          syncOptions:
+            - CreateNamespace=true
+  when: node_role == 'master'
+
+- name: Create GitOps repository secret
+  kubernetes.core.k8s:
+    name: gitops-repo-secret
+    namespace: argocd
+    api_version: v1
+    kind: Secret
+    state: present
+    definition:
+      type: Opaque
+      stringData:
+        type: git
+        url: "{{ git_repo_url }}"
+        username: "{{ git_username }}"
+        password: "{{ git_token }}"
+  when: node_role == 'master'
+
+- name: Display ArgoCD access information
+  debug:
+    msg:
+      - "🔗 ArgoCD GitOps Interface:"
+      - "  - URL: http://argocd.{{ cluster_ip }}.nip.io"
+      - "  - Username: admin"
+      - "  - Password: {{ argocd_password.stdout_lines[0] if argocd_password.stdout_lines else 'Check ArgoCD pods' }}"
+      - "  - GitOps App: kagent-gitops"
+  when: node_role == 'master'

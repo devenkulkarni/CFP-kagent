@@ -1,0 +1,204 @@
+---
+- name: Create kagent namespace
+  kubernetes.core.k8s:
+    name: "{{ kagent_namespace }}"
+    api_version: v1
+    kind: Namespace
+    state: present
+  when: node_role == 'master'
+
+- name: Create kagent service account
+  kubernetes.core.k8s:
+    name: kagent
+    namespace: "{{ kagent_namespace }}"
+    api_version: v1
+    kind: ServiceAccount
+    state: present
+  when: node_role == 'master'
+
+- name: Create kagent cluster role
+  kubernetes.core.k8s:
+    name: kagent
+    api_version: rbac.authorization.k8s.io/v1
+    kind: ClusterRole
+    state: present
+    definition:
+      rules:
+        - apiGroups: [""]
+          resources: ["pods", "services", "endpoints", "persistentvolumeclaims", "events", "configmaps", "secrets"]
+          verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+        - apiGroups: ["apps"]
+          resources: ["deployments", "daemonsets", "replicasets", "statefulsets"]
+          verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+        - apiGroups: ["monitoring.coreos.com"]
+          resources: ["servicemonitors"]
+          verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+        - apiGroups: ["apps"]
+          resources: ["deployments/scale"]
+          verbs: ["get", "update", "patch"]
+        - apiGroups: ["networking.k8s.io"]
+          resources: ["ingresses"]
+          verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  when: node_role == 'master'
+
+- name: Create kagent cluster role binding
+  kubernetes.core.k8s:
+    name: kagent
+    api_version: rbac.authorization.k8s.io/v1
+    kind: ClusterRoleBinding
+    state: present
+    definition:
+      subjects:
+        - kind: ServiceAccount
+          name: kagent
+          namespace: "{{ kagent_namespace }}"
+      roleRef:
+        kind: ClusterRole
+        name: kagent
+        apiGroup: rbac.authorization.k8s.io
+  when: node_role == 'master'
+
+- name: Create kagent secrets
+  kubernetes.core.k8s:
+    name: kagent-secrets
+    namespace: "{{ kagent_namespace }}"
+    api_version: v1
+    kind: Secret
+    state: present
+    definition:
+      type: Opaque
+      data:
+        openai-api-key: "{{ openai_api_key | b64encode }}"
+        anthropic-api-key: "{{ anthropic_api_key | b64encode }}"
+  when: node_role == 'master'
+
+- name: Create kagent configmap
+  kubernetes.core.k8s:
+    name: kagent-config
+    namespace: "{{ kagent_namespace }}"
+    api_version: v1
+    kind: ConfigMap
+    state: present
+    definition:
+      data:
+        kagent.yaml: |
+          providers:
+            ollama:
+              host: "{{ ollama_host | default('http://ollama.ollama.svc.cluster.local') }}"
+              model: "{{ ollama_model | default('llama3.1:8b') }}"
+            openai:
+              apiKey: "${OPENAI_API_KEY}"
+              model: "{{ openai_model | default('gpt-4') }}"
+            anthropic:
+              apiKey: "${ANTHROPIC_API_KEY}"
+              model: "{{ anthropic_model | default('claude-3-sonnet') }}"
+          tools:
+            - name: "kubernetes"
+              type: "kubernetes"
+            - name: "prometheus"
+              type: "prometheus"
+              config:
+                url: "http://prometheus-server.monitoring.svc.cluster.local"
+            - name: "git"
+              type: "git"
+              config:
+                repo: "{{ git_repo_url }}"
+                branch: "{{ git_branch }}"
+  when: node_role == 'master'
+
+- name: Create kagent deployment
+  kubernetes.core.k8s:
+    name: kagent
+    namespace: "{{ kagent_namespace }}"
+    api_version: apps/v1
+    kind: Deployment
+    state: present
+    definition:
+      spec:
+        replicas: 1
+        selector:
+          matchLabels:
+            app: kagent
+        template:
+          metadata:
+            labels:
+              app: kagent
+          spec:
+            serviceAccountName: kagent
+            containers:
+              - name: kagent
+                image: "kagent/kagent:{{ kagent_version }}"
+                ports:
+                  - containerPort: 8080
+                    name: http
+                env:
+                  - name: KAGENT_CONFIG
+                    value: "/etc/kagent/kagent.yaml"
+                  - name: KAGENT_NAMESPACE
+                    value: "{{ kagent_namespace }}"
+                  - name: OPENAI_API_KEY
+                    valueFrom:
+                      secretKeyRef:
+                        name: kagent-secrets
+                        key: openai-api-key
+                  - name: ANTHROPIC_API_KEY
+                    valueFrom:
+                      secretKeyRef:
+                        name: kagent-secrets
+                        key: anthropic-api-key
+                resources:
+                  requests:
+                    memory: "{{ kagent_resources.requests.memory }}"
+                    cpu: "{{ kagent_resources.requests.cpu }}"
+                  limits:
+                    memory: "{{ kagent_resources.limits.memory }}"
+                    cpu: "{{ kagent_resources.limits.cpu }}"
+                volumeMounts:
+                  - name: config
+                    mountPath: /etc/kagent
+                    readOnly: true
+            volumes:
+              - name: config
+                configMap:
+                  name: kagent-config
+  when: node_role == 'master'
+
+- name: Create kagent service
+  kubernetes.core.k8s:
+    name: kagent
+    namespace: "{{ kagent_namespace }}"
+    api_version: v1
+    kind: Service
+    state: present
+    definition:
+      spec:
+        selector:
+          app: kagent
+        ports:
+          - port: 80
+            targetPort: 8080
+            name: http
+        type: ClusterIP
+  when: node_role == 'master'
+
+- name: Create kagent ingress
+  kubernetes.core.k8s:
+    name: kagent
+    namespace: "{{ kagent_namespace }}"
+    api_version: networking.k8s.io/v1
+    kind: Ingress
+    state: present
+    definition:
+      spec:
+        rules:
+          - host: "kagent.{{ cluster_ip }}.nip.io"
+            http:
+              paths:
+                - path: /
+                  pathType: Prefix
+                  backend:
+                    service:
+                      name: kagent
+                      port:
+                        number: 80
+  when: node_role == 'master'
